@@ -5,26 +5,34 @@ import (
 	"go/build"
 	"os"
 	"path/filepath"
+	//"flag"
+	//"text/template"
 )
 
-func main() {
-	filePath := os.Args[1]
-	// TODO add flag to show only import from GOPATH (not GOROOT)
+type Target struct {
+	Binary string
+	DependencyFiles []string
+}
 
+type Import struct {
+	Path string
+	PkgPath string
+	Goroot bool
+}
+
+func lookupDependencies(filePath string) ([]*Import, error) {
 	// resolve filepath
 	absFilePath, err := filepath.Abs(filePath)
 	if err != nil {
 		panic(err)
 	}
-
 	fileDir := filepath.Dir(absFilePath)
-
 	pkg, err := build.ImportDir(fileDir, 0)
 	if err != nil {
 		panic(err)
 	}
 
-	//imports := make(map[string]*build.Package)
+	imports := make([]*Import, 0, len(pkg.ImportPos))
 
 	for importName, importPos := range pkg.ImportPos {
 		// load package for import
@@ -35,11 +43,30 @@ func main() {
 				if err != nil {
 					panic(err)
 				}
-				if importPkg.Goroot {
-					fmt.Printf("%s/%s/*.go ", build.Default.GOROOT, importPkg.ImportPath)
-				} else {
-					fmt.Printf("%s/%s/*.go ", build.Default.GOPATH, importPkg.ImportPath)
-				}
+				importPath := fmt.Sprintf("%s/src/%s", importPkg.Root, importPkg.ImportPath)
+				imports = append(imports, &Import{Path: importName, PkgPath: importPath, Goroot: importPkg.Goroot})
+			}
+		}
+	}
+	return imports, nil
+}
+
+func main() {
+	//var templatePath string
+	//flag.String("template", &templatePath, "makefile.tmpl", "Makefile template path.")
+	//flag.Parse()
+
+	//mainFiles := flag.Args()
+	mainFiles := os.Args[1:]
+	// TODO add flag to show only import from GOPATH (not GOROOT)
+
+	for _, filePath := range mainFiles {
+		if imports, err := lookupDependencies(filePath); err != nil {
+			fmt.Fprintln(os.Stderr, "Depency lookup failed for:", filePath, err.Error())
+		} else {
+			fmt.Println(filePath)
+			for _, i := range imports {
+				fmt.Printf("%#v\n", i)
 			}
 		}
 	}
