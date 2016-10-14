@@ -1,24 +1,30 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"go/build"
 	"os"
 	"path/filepath"
-	//"flag"
-	//"text/template"
+	"text/template"
+	"strings"
 )
 
 type Target struct {
-	Binary string
-	DependencyFiles []string
+	Binary          string
+	Imports					[]*Import
 }
 
 type Import struct {
-	Path string
+	Path    string
 	PkgPath string
-	Goroot bool
+	Goroot  bool
 }
+
+const makefileTemplate =
+`{{ .Binary }}: {{ range $i := .Imports }}{{ $i.PkgPath }}/*.go{{ end }}
+	go build -ldflags ${LDFLAGS} $@.go
+`
 
 func lookupDependencies(filePath string) ([]*Import, error) {
 	// resolve filepath
@@ -52,22 +58,30 @@ func lookupDependencies(filePath string) ([]*Import, error) {
 }
 
 func main() {
-	//var templatePath string
-	//flag.String("template", &templatePath, "makefile.tmpl", "Makefile template path.")
-	//flag.Parse()
-
-	//mainFiles := flag.Args()
-	mainFiles := os.Args[1:]
 	// TODO add flag to show only import from GOPATH (not GOROOT)
+	var templatePath string
+	flag.StringVar(&templatePath, "template", "", "Makefile template path.")
+	flag.Parse()
 
-	for _, filePath := range mainFiles {
-		if imports, err := lookupDependencies(filePath); err != nil {
-			fmt.Fprintln(os.Stderr, "Depency lookup failed for:", filePath, err.Error())
-		} else {
-			fmt.Println(filePath)
-			for _, i := range imports {
-				fmt.Printf("%#v\n", i)
-			}
+	// parse template
+	var t *template.Template
+	if templatePath == "" {
+		t = template.Must(template.New("Makefile").Parse(makefileTemplate))
+	} else {
+		t = template.Must(template.ParseFiles(templatePath))
+	}
+
+
+	filePath := flag.Args()[0]
+	if imports, err := lookupDependencies(filePath); err != nil {
+		fmt.Fprintln(os.Stderr, "Depency lookup failed for:", filePath, err.Error())
+	} else {
+		target := &Target{
+			Binary: strings.TrimSuffix(filepath.Base(filePath), ".go"),
+			Imports: imports,
 		}
+		// render template
+		t.Execute(os.Stdout, target)
 	}
 }
+
