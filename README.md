@@ -7,7 +7,7 @@ Makefile inclusion:
 ```
 #$(BINS:%=%.deps.mk)
 
-%.deps.mk:
+.%.deps.mk:
 	echo -n "$*: " > $@
 	gomakedeps $*.go >> $@
 
