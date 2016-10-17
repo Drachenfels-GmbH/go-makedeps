@@ -1,3 +1,0 @@
-{{ .Binary }}: {{ range $i := .Imports }}{{ $i.PkgPath }}/*.go{{ end }}
-	go build -ldflags ${LDFLAGS} $@.go
-

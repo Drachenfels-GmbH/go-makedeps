@@ -1,5 +1,17 @@
-# Makemakefile (make makefile)
+# Gomakefile
 
-Generates a makefile for a go main program.
+Generates makefile dependencies for a go main program.
 
-https://godoc.org/golang.org/x/tools/go/ast/astutil
+Makefile inclusion:
+
+```
+#$(BINS:%=%.deps.mk)
+
+%.deps.mk:
+	echo -n "$*: " > $@
+	gomakedeps $*.go >> $@
+
+ifneq ($(MAKECMDGOALS),clean)
+-include $(BINS:%=.%.deps.mk)
+endif
+```
