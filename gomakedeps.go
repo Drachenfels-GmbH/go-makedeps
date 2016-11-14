@@ -50,6 +50,10 @@ func lookupDependencies(filePath string) ([]*Import, error) {
 }
 
 func main() {
+	if len(os.Args) != 2 {
+		fmt.Fprintf(os.Stderr, "Usage: %s <go main sourcefile>\n", os.Args[0])
+		os.Exit(1)
+	}
 	filePath := os.Args[1]
 	if imports, err := lookupDependencies(filePath); err != nil {
 		fmt.Fprintln(os.Stderr, "Depency lookup failed for:", filePath, err.Error())
